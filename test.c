@@ -5,19 +5,16 @@
 #include "cJSON.h" 
 #include <curl/curl.h>
 
-// --- 定義資料結構 (展現 Struct 巢狀結構技巧) ---
-
-// 1. 最底層：城市
+// --- 定義資料結構 ---
 typedef struct {
-    char nameTW[50];   // 顯示名稱 (台北)
-    char nameAPI[50];  // 查詢名稱 (Taipei)
+    char nameTW[50];   // 顯示名稱
+    char nameAPI[50];  // 查詢名稱
 } City;
 
-// 2. 上層：國家 (包含一個城市的陣列)
 typedef struct {
-    char countryName[50]; // 國家名稱 (台灣)
-    City cities[10];      // 該國家底下的城市列表 (假設最多10個)
-    int cityCount;        // 該國家目前有多少個城市
+    char countryName[50]; 
+    City cities[30];      
+    int cityCount;        
 } Country;
 
 // --- 天氣資訊結構 ---
@@ -62,8 +59,12 @@ int getWeather(char* searchName, char* displayName, WeatherInfo* info) {
 
     curl = curl_easy_init();
     if(curl) {
+        char *encodedName = curl_easy_escape(curl, searchName, 0);
+
         char url[512];
-        sprintf(url, "http://api.openweathermap.org/data/2.5/weather?q=%s&appid=%s&units=metric&lang=zh_tw", searchName, API_KEY);
+        sprintf(url, "http://api.openweathermap.org/data/2.5/weather?q=%s&appid=%s&units=metric&lang=zh_tw", encodedName, API_KEY);
+
+        curl_free(encodedName); 
 
         curl_easy_setopt(curl, CURLOPT_URL, url);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writefunc);
@@ -72,7 +73,8 @@ int getWeather(char* searchName, char* displayName, WeatherInfo* info) {
         res = curl_easy_perform(curl);
         
         if(res != CURLE_OK) {
-            printf("連線失敗，請檢查網路。\n");
+            printf("連線失敗 (Error Code: %d)\n", res);
+            printf("原因: %s\n", curl_easy_strerror(res)); 
             return 0;
         }
 
@@ -118,55 +120,77 @@ void saveHistory(WeatherInfo info) {
 }
 
 int main() {
-    SetConsoleOutputCP(65001); // 設定 UTF-8 輸出
+    SetConsoleOutputCP(65001);
 
-    // ★建立巢狀資料庫：國家 -> 城市
-    // 這裡展現了如何用程式碼結構化地管理真實世界資料
     Country worldData[] = {
-        // 第一個國家：台灣
+        // 1. 台灣 (Taiwan)
         {
-            "台灣", 
+            "台灣 (Taiwan)", 
             {
-                {"台北", "Taipei"},
-                {"台中", "Taichung"},
-                {"高雄", "Kaohsiung"},
-                {"台南", "Tainan"},
-                {"花蓮", "Hualien"}
+                {"基隆市", "Keelung"},
+                {"台北市", "Taipei"},
+                {"新北市", "New Taipei"},
+                {"桃園市", "Taoyuan"},
+                {"新竹市", "Hsinchu"},
+                {"新竹縣", "Zhubei"},
+                {"苗栗縣", "Miaoli"},
+                {"台中市", "Taichung"},
+                {"彰化縣", "Changhua"},
+                {"南投縣", "Nantou"},
+                {"雲林縣", "Douliu"},
+                {"嘉義市", "Chiayi"},
+                {"嘉義縣", "Taibao"},
+                {"台南市", "Tainan"},
+                {"高雄市", "Kaohsiung"},
+                {"屏東縣", "Pingtung"},
+                {"宜蘭縣", "Yilan"},
+                {"花蓮縣", "Hualien"},
+                {"台東縣", "Taitung"},
+                {"澎湖縣", "Magong"},
+                {"金門縣", "Jincheng"},
+                {"連江縣 (馬祖)", "Nangan"}
             },
-            5 // 城市數量
+            22
         },
-        // 第二個國家：日本
+        // 2. 日本 (Japan)
         {
-            "日本",
+            "日本 (Japan)",
             {
                 {"東京", "Tokyo"},
                 {"大阪", "Osaka"},
                 {"京都", "Kyoto"},
-                {"北海道", "Hokkaido"},
-                {"沖繩", "Okinawa"}
+                {"北海道 (札幌)", "Sapporo"},
+                {"沖繩 (那霸)", "Naha"},
+                {"福岡", "Fukuoka"},
+                {"名古屋", "Nagoya"}
             },
-            5
+            7
         },
-        // 第三個國家：美國
+        // 3. 美國 (USA)
         {
-            "美國",
+            "美國 (USA)",
             {
                 {"紐約", "New York"},
                 {"洛杉磯", "Los Angeles"},
                 {"舊金山", "San Francisco"},
-                {"芝加哥", "Chicago"}
+                {"西雅圖", "Seattle"},
+                {"芝加哥", "Chicago"},
+                {"波士頓", "Boston"}
             },
-            4
+            6
         },
-        // 第四個國家：歐洲精選
+        // 4. 歐洲地區 (Europe)
         {
-            "歐洲地區",
+            "歐洲 (Europe)",
             {
                 {"倫敦 (英國)", "London"},
                 {"巴黎 (法國)", "Paris"},
-                {"柏林 (德國)", "Berlin"}
+                {"柏林 (德國)", "Berlin"},
+                {"羅馬 (義大利)", "Rome"},
+                {"馬德里 (西班牙)", "Madrid"},
+                {"阿姆斯特丹 (荷蘭)", "Amsterdam"}
             },
-            3
+            6
         }
     };
     
@@ -174,10 +198,9 @@ int main() {
     int countryChoice, cityChoice;
     WeatherInfo currentData;
 
-    printf("=== 環球天氣觀測系統 (Global Weather System) ===\n");
+    printf("=== 天氣觀測系統 (Global Weather System) ===\n");
 
     while(1) { 
-        // --- 第一層選單：選國家 ---
         printf("\n請選擇國家/地區:\n");
         for(int i=0; i<countryCount; i++) {
             printf("%d. %s\n", i+1, worldData[i].countryName);
@@ -190,21 +213,22 @@ int main() {
             continue;
         }
 
-        if (countryChoice == 0) break; // 離開程式
+        if (countryChoice == 0) break; 
 
         if (countryChoice > 0 && countryChoice <= countryCount) {
             
-            // 取得使用者選的國家 struct
             Country selectedCountry = worldData[countryChoice - 1];
 
-            // --- 第二層選單：選該國家的城市 ---
             while(1) {
                 printf("\n-- 您選擇了 [%s] --\n", selectedCountry.countryName);
                 printf("請選擇城市:\n");
                 for(int j=0; j<selectedCountry.cityCount; j++) {
-                    printf("%d. %s\n", j+1, selectedCountry.cities[j].nameTW);
+                    printf("%2d. %-14s", j+1, selectedCountry.cities[j].nameTW);
+                    if ((j+1) % 2 == 0) printf("\n");
                 }
-                printf("0. 返回上一頁 (重選國家)\n");
+                if (selectedCountry.cityCount % 2 != 0) printf("\n"); 
+                
+                printf(" 0. 返回上一頁\n");
                 printf("輸入選項: ");
 
                 if (scanf("%d", &cityChoice) != 1) {
@@ -212,17 +236,16 @@ int main() {
                     continue;
                 }
 
-                if (cityChoice == 0) break; // 跳出內層迴圈，回到國家選單
+                if (cityChoice == 0) break; 
 
                 if (cityChoice > 0 && cityChoice <= selectedCountry.cityCount) {
-                    // 鎖定最終目標城市
                     City targetCity = selectedCountry.cities[cityChoice - 1];
 
-                    printf("\n正在連線至衛星查詢 %s (%s) ...\n", targetCity.nameTW, selectedCountry.countryName);
+                    printf("\n正在連線至衛星查詢 %s ...\n", targetCity.nameTW);
 
                     if (getWeather(targetCity.nameAPI, targetCity.nameTW, &currentData)) {
                         printf("\n============================\n");
-                        printf(" 地區: %s - %s\n", selectedCountry.countryName, currentData.city);
+                        printf(" 地區: %s\n", currentData.city);
                         printf(" 氣溫: %.1f °C\n", currentData.temperature);
                         printf(" 濕度: %d %%\n", currentData.humidity);
                         printf(" 現況: %s\n", currentData.description);
@@ -230,17 +253,16 @@ int main() {
                         saveHistory(currentData);
                         
                         printf("\n按 Enter 繼續...");
-                        getchar(); getchar(); // 暫停一下讓使用者看結果
+                        getchar(); getchar(); 
                     }
                 } else {
                     printf("無效的城市選項。\n");
                 }
-            } // end of city loop
-
+            } 
         } else {
             printf("無效的國家選項。\n");
         }
-    } // end of main loop
+    } 
 
     printf("系統已關閉。\n");
     return 0;

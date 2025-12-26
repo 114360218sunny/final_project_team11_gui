@@ -3184,7 +3184,7 @@ CJSON_PUBLIC(void *) cJSON_malloc(size_t size)
     return global_hooks.allocate(size);
 }
 
-CJSON_PUBLIC(void) cJSON_free(void* object)
+CJSON_PUBLIC(void) cJSON_free(void *object)
 {
     global_hooks.deallocate(object);
     object = NULL;

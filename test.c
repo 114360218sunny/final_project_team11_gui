@@ -1,247 +1,174 @@
+﻿#include <windows.h>
+#include <commctrl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <windows.h> 
-#include "cJSON.h" 
+#include "cJSON.h"
 #include <curl/curl.h>
 
-// --- 定義資料結構 (展現 Struct 巢狀結構技巧) ---
+// --- 視窗 [自動連結與樣式] 解決連結錯誤
+#pragma comment(lib, "comctl32.lib")
+#pragma comment(lib, "libcurl.lib") 
+#pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
-// 1. 最底層：城市
-typedef struct {
-    char nameTW[50];   // 顯示名稱 (台北)
-    char nameAPI[50];  // 查詢名稱 (Taipei)
-} City;
+// 完整保留原先的 Struct 與 資料庫
+typedef struct { char nameTW[50]; char nameAPI[50]; } City;
+typedef struct { char countryName[50]; City cities[10]; int cityCount; } Country;
+typedef struct { char city[50]; double temperature; int humidity; char description[100]; } WeatherInfo;
 
-// 2. 上層：國家 (包含一個城市的陣列)
-typedef struct {
-    char countryName[50]; // 國家名稱 (台灣)
-    City cities[10];      // 該國家底下的城市列表 (假設最多10個)
-    int cityCount;        // 該國家目前有多少個城市
-} Country;
+struct string { char* ptr; size_t len; };
 
-// --- 天氣資訊結構 ---
-typedef struct {
-    char city[50];
-    double temperature;
-    int humidity;
-    char description[100];
-} WeatherInfo;
+// 全域變數
+HWND hStaticResult, hBtnBack;
+HWND hOptionButtons[10]; // 用來動態顯示國家或城市的按鈕
+int currentAppState = 0; // 0: 選國家, 1: 選城市
+int selectedCountryIdx = -1;
+const char* API_KEY = "2fa80dc7ec8be3fac297f88afd028de9"; //
 
-struct string {
-    char *ptr;
-    size_t len;
+// 4 個地區資料
+Country worldData[] = {
+    {"台灣", {{"台北", "Taipei"}, {"台中", "Taichung"}, {"高雄", "Kaohsiung"}, {"台南", "Tainan"}, {"花蓮", "Hualien"}}, 5},
+    {"日本", {{"東京", "Tokyo"}, {"大阪", "Osaka"}, {"京都", "Kyoto"}, {"北海道", "Hokkaido"}, {"沖繩", "Okinawa"}}, 5},
+    {"美國", {{"紐約", "New York"}, {"洛杉磯", "Los Angeles"}, {"舊金山", "San Francisco"}, {"芝加哥", "Chicago"}}, 4},
+    {"歐洲地區", {{"倫敦", "London"}, {"巴黎", "Paris"}, {"柏林", "Berlin"}}, 3}
 };
+int countryCount = 4;
 
-// --- 基礎工具函式 ---
-void init_string(struct string *s) {
-    s->len = 0;
-    s->ptr = malloc(s->len + 1);
-    if (s->ptr == NULL) exit(EXIT_FAILURE);
-    s->ptr[0] = '\0';
+//  編碼轉換工具 (解決亂碼)
+wchar_t* ToWide(const char* utf8) {
+    int wlen = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, NULL, 0);
+    wchar_t* wstr = (wchar_t*)malloc(wlen * sizeof(wchar_t));
+    MultiByteToWideChar(CP_UTF8, 0, utf8, -1, wstr, wlen);
+    return wstr;
 }
 
-size_t writefunc(void *ptr, size_t size, size_t nmemb, struct string *s) {
+//  網路功能 (保留同學的邏輯)
+
+size_t writefunc(void* ptr, size_t size, size_t nmemb, struct string* s) {
     size_t new_len = s->len + size * nmemb;
     s->ptr = realloc(s->ptr, new_len + 1);
-    if (s->ptr == NULL) exit(EXIT_FAILURE);
     memcpy(s->ptr + s->len, ptr, size * nmemb);
-    s->ptr[new_len] = '\0';
-    s->len = new_len;
+    s->ptr[new_len] = '\0'; s->len = new_len;
     return size * nmemb;
 }
 
-// ★記得填入你的 API Key
-const char* API_KEY = "2fa80dc7ec8be3fac297f88afd028de9"; 
-
-int getWeather(char* searchName, char* displayName, WeatherInfo* info) {
-    CURL *curl;
-    CURLcode res;
-    struct string s;
-    init_string(&s);
-
-    curl = curl_easy_init();
-    if(curl) {
+//視窗畫面
+void FetchWeatherGUI(int cityIdx) {
+    City target = worldData[selectedCountryIdx].cities[cityIdx];
+    CURL* curl = curl_easy_init();
+    if (curl) {
+        struct string s = { malloc(1), 0 }; s.ptr[0] = '\0';
         char url[512];
-        sprintf(url, "http://api.openweathermap.org/data/2.5/weather?q=%s&appid=%s&units=metric&lang=zh_tw", searchName, API_KEY);
-
+        sprintf(url, "http://api.openweathermap.org/data/2.5/weather?q=%s&appid=%s&units=metric&lang=zh_tw", target.nameAPI, API_KEY);
         curl_easy_setopt(curl, CURLOPT_URL, url);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writefunc);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &s);
-        
-        res = curl_easy_perform(curl);
-        
-        if(res != CURLE_OK) {
-            printf("連線失敗，請檢查網路。\n");
-            return 0;
+
+        if (curl_easy_perform(curl) == CURLE_OK) {
+            cJSON* json = cJSON_Parse(s.ptr);
+            if (json && cJSON_GetObjectItem(json, "main")) {
+                double temp = cJSON_GetObjectItem(cJSON_GetObjectItem(json, "main"), "temp")->valuedouble;
+                int hum = cJSON_GetObjectItem(cJSON_GetObjectItem(json, "main"), "humidity")->valueint;
+                const char* desc = cJSON_GetObjectItem(cJSON_GetArrayItem(cJSON_GetObjectItem(json, "weather"), 0), "description")->valuestring;
+
+                wchar_t* wCity = ToWide(target.nameTW);
+                wchar_t* wDesc = ToWide(desc); // 解決氣候概況亂碼
+                wchar_t buf[512];
+                swprintf(buf, 512, L"【%s 觀測站】\n氣溫：%.1f °C  |  濕度：%d %%\n現況：%s", wCity, temp, hum, wDesc);
+                SetWindowTextW(hStaticResult, buf);
+                free(wCity); free(wDesc);
+            }
+            cJSON_Delete(json);
         }
+        curl_easy_cleanup(curl); free(s.ptr);
+    }
+}
 
-        cJSON *json = cJSON_Parse(s.ptr);
-        if (json == NULL) return 0;
-
-        cJSON *cod = cJSON_GetObjectItem(json, "cod");
-        int statusCode = 0;
-        if (cJSON_IsNumber(cod)) statusCode = cod->valueint;
-        else if (cJSON_IsString(cod)) statusCode = atoi(cod->valuestring);
-
-        if (statusCode != 200) {
-             printf(">> 查詢失敗 (Code: %d) - 請檢查 API Key。\n", statusCode);
-             return 0;
+// GUI 介面更新
+void UpdateInterface(HWND hwnd) {
+    if (currentAppState == 0) { // 狀態 0：顯示國家選單
+        SetWindowTextW(hStaticResult, L"=== 環球天氣觀測系統 ===\n請選擇國家/地區");
+        ShowWindow(hBtnBack, SW_HIDE);
+        for (int i = 0; i < 10; i++) {
+            if (i < countryCount) {
+                wchar_t* wName = ToWide(worldData[i].countryName);
+                SetWindowTextW(hOptionButtons[i], wName);
+                ShowWindow(hOptionButtons[i], SW_SHOW);
+                free(wName);
+            }
+            else ShowWindow(hOptionButtons[i], SW_HIDE);
         }
+    }
+    else { // 狀態 1：顯示城市選單
+        wchar_t* wCountry = ToWide(worldData[selectedCountryIdx].countryName);
+        wchar_t buf[100]; swprintf(buf, 100, L"當前地區：[%s]\n請選擇觀測城市", wCountry);
+        SetWindowTextW(hStaticResult, buf);
+        ShowWindow(hBtnBack, SW_SHOW);
+        free(wCountry);
+        for (int i = 0; i < 10; i++) {
+            if (i < worldData[selectedCountryIdx].cityCount) {
+                wchar_t* wCity = ToWide(worldData[selectedCountryIdx].cities[i].nameTW);
+                SetWindowTextW(hOptionButtons[i], wCity);
+                ShowWindow(hOptionButtons[i], SW_SHOW);
+                free(wCity);
+            }
+            else ShowWindow(hOptionButtons[i], SW_HIDE);
+        }
+    }
+}
 
-        cJSON *main_obj = cJSON_GetObjectItem(json, "main");
-        cJSON *temp = cJSON_GetObjectItem(main_obj, "temp");
-        cJSON *humidity = cJSON_GetObjectItem(main_obj, "humidity");
-        cJSON *weather_arr = cJSON_GetObjectItem(json, "weather");
-        cJSON *weather_item = cJSON_GetArrayItem(weather_arr, 0);
-        cJSON *desc = cJSON_GetObjectItem(weather_item, "description");
 
-        strcpy(info->city, displayName);
-        info->temperature = temp->valuedouble;
-        info->humidity = humidity->valueint;
-        strcpy(info->description, desc->valuestring);
+// 視窗訊息處理
 
-        cJSON_Delete(json);
-        curl_easy_cleanup(curl);
-        free(s.ptr);
-        return 1;
+LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    switch (uMsg) {
+    case WM_CREATE: {
+        HFONT hFont = CreateFontW(18, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, L"Microsoft JhengHei");
+        hStaticResult = CreateWindowW(L"STATIC", L"", WS_VISIBLE | WS_CHILD | SS_CENTER, 20, 20, 440, 90, hwnd, NULL, NULL, NULL);
+        SendMessage(hStaticResult, WM_SETFONT, (WPARAM)hFont, TRUE);
+
+        for (int i = 0; i < 10; i++) {
+            hOptionButtons[i] = CreateWindowW(L"BUTTON", L"", WS_CHILD | BS_PUSHBUTTON, 20 + (i % 2) * 225, 120 + (i / 2) * 45, 215, 38, hwnd, (HMENU)(1000 + i), NULL, NULL);
+            SendMessage(hOptionButtons[i], WM_SETFONT, (WPARAM)hFont, TRUE);
+        }
+        hBtnBack = CreateWindowW(L"BUTTON", L"返回上一頁 (重選地區)", WS_CHILD, 20, 355, 440, 35, hwnd, (HMENU)2000, NULL, NULL);
+        SendMessage(hBtnBack, WM_SETFONT, (WPARAM)hFont, TRUE);
+        UpdateInterface(hwnd);
+        break;
+    }
+    case WM_COMMAND: {
+        int wmId = LOWORD(wParam);
+        if (wmId >= 1000 && wmId < 1010) {
+            int idx = wmId - 1000;
+            if (currentAppState == 0) {
+                selectedCountryIdx = idx; currentAppState = 1; UpdateInterface(hwnd);
+            }
+            else FetchWeatherGUI(idx);
+        }
+        else if (wmId == 2000) {
+            currentAppState = 0; UpdateInterface(hwnd);
+        }
+        break;
+    }
+    case WM_DESTROY: PostQuitMessage(0); break;
+    default: return DefWindowProcW(hwnd, uMsg, wParam, lParam);
     }
     return 0;
 }
 
-void saveHistory(WeatherInfo info) {
-    FILE *fp = fopen("history.txt", "a");
-    if (fp != NULL) {
-        fprintf(fp, "%s | %.1f°C | %s\n", info.city, info.temperature, info.description);
-        fclose(fp);
-    }
-}
-
 int main() {
-    SetConsoleOutputCP(65001); // 設定 UTF-8 輸出
+    InitCommonControls();
+    WNDCLASSW wc = { 0 };
+    wc.lpfnWndProc = WindowProc;
+    wc.hInstance = GetModuleHandle(NULL);
+    wc.lpszClassName = L"GlobalWeatherWin";
+    wc.hbrBackground = (HBRUSH)(COLOR_BTNFACE + 1);
+    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+    RegisterClassW(&wc);
 
-    // ★建立巢狀資料庫：國家 -> 城市
-    // 這裡展現了如何用程式碼結構化地管理真實世界資料
-    Country worldData[] = {
-        // 第一個國家：台灣
-        {
-            "台灣", 
-            {
-                {"台北", "Taipei"},
-                {"台中", "Taichung"},
-                {"高雄", "Kaohsiung"},
-                {"台南", "Tainan"},
-                {"花蓮", "Hualien"}
-            },
-            5 // 城市數量
-        },
-        // 第二個國家：日本
-        {
-            "日本",
-            {
-                {"東京", "Tokyo"},
-                {"大阪", "Osaka"},
-                {"京都", "Kyoto"},
-                {"北海道", "Hokkaido"},
-                {"沖繩", "Okinawa"}
-            },
-            5
-        },
-        // 第三個國家：美國
-        {
-            "美國",
-            {
-                {"紐約", "New York"},
-                {"洛杉磯", "Los Angeles"},
-                {"舊金山", "San Francisco"},
-                {"芝加哥", "Chicago"}
-            },
-            4
-        },
-        // 第四個國家：歐洲精選
-        {
-            "歐洲地區",
-            {
-                {"倫敦 (英國)", "London"},
-                {"巴黎 (法國)", "Paris"},
-                {"柏林 (德國)", "Berlin"}
-            },
-            3
-        }
-    };
-    
-    int countryCount = sizeof(worldData) / sizeof(worldData[0]);
-    int countryChoice, cityChoice;
-    WeatherInfo currentData;
-
-    printf("=== 環球天氣觀測系統 (Global Weather System) ===\n");
-
-    while(1) { 
-        // --- 第一層選單：選國家 ---
-        printf("\n請選擇國家/地區:\n");
-        for(int i=0; i<countryCount; i++) {
-            printf("%d. %s\n", i+1, worldData[i].countryName);
-        }
-        printf("0. 離開系統\n");
-        printf("輸入選項: ");
-        
-        if (scanf("%d", &countryChoice) != 1) {
-            while(getchar() != '\n');
-            continue;
-        }
-
-        if (countryChoice == 0) break; // 離開程式
-
-        if (countryChoice > 0 && countryChoice <= countryCount) {
-            
-            // 取得使用者選的國家 struct
-            Country selectedCountry = worldData[countryChoice - 1];
-
-            // --- 第二層選單：選該國家的城市 ---
-            while(1) {
-                printf("\n-- 您選擇了 [%s] --\n", selectedCountry.countryName);
-                printf("請選擇城市:\n");
-                for(int j=0; j<selectedCountry.cityCount; j++) {
-                    printf("%d. %s\n", j+1, selectedCountry.cities[j].nameTW);
-                }
-                printf("0. 返回上一頁 (重選國家)\n");
-                printf("輸入選項: ");
-
-                if (scanf("%d", &cityChoice) != 1) {
-                    while(getchar() != '\n');
-                    continue;
-                }
-
-                if (cityChoice == 0) break; // 跳出內層迴圈，回到國家選單
-
-                if (cityChoice > 0 && cityChoice <= selectedCountry.cityCount) {
-                    // 鎖定最終目標城市
-                    City targetCity = selectedCountry.cities[cityChoice - 1];
-
-                    printf("\n正在連線至衛星查詢 %s (%s) ...\n", targetCity.nameTW, selectedCountry.countryName);
-
-                    if (getWeather(targetCity.nameAPI, targetCity.nameTW, &currentData)) {
-                        printf("\n============================\n");
-                        printf(" 地區: %s - %s\n", selectedCountry.countryName, currentData.city);
-                        printf(" 氣溫: %.1f °C\n", currentData.temperature);
-                        printf(" 濕度: %d %%\n", currentData.humidity);
-                        printf(" 現況: %s\n", currentData.description);
-                        printf("============================\n");
-                        saveHistory(currentData);
-                        
-                        printf("\n按 Enter 繼續...");
-                        getchar(); getchar(); // 暫停一下讓使用者看結果
-                    }
-                } else {
-                    printf("無效的城市選項。\n");
-                }
-            } // end of city loop
-
-        } else {
-            printf("無效的國家選項。\n");
-        }
-    } // end of main loop
-
-    printf("系統已關閉。\n");
+    HWND hwnd = CreateWindowExW(0, L"GlobalWeatherWin", L"衛星天氣觀測系統", WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX, CW_USEDEFAULT, CW_USEDEFAULT, 495, 445, NULL, NULL, NULL, NULL);
+    ShowWindow(hwnd, SW_SHOW);
+    MSG msg = { 0 };
+    while (GetMessage(&msg, NULL, 0, 0)) { TranslateMessage(&msg); DispatchMessage(&msg); }
     return 0;
 }

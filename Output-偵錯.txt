@@ -1,0 +1,51 @@
+﻿final_project.exe' (Win32): 已載入 'C:\Users\user\Desktop\c_code\final_project\temp\debug\final_project.exe'。已載入符號。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\ntdll.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\kernel32.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\KernelBase.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\user32.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\win32u.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\gdi32.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\gdi32full.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\msvcp_win.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\ucrtbase.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\ws2_32.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\rpcrt4.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\Wldap32.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\advapi32.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\msvcrt.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\sechost.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\crypt32.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\vcruntime140d.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\ucrtbased.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\bcrypt.dll'。包含/排除設定已停用符號載入。
+2684 執行緒以返回碼 0 (0x0) 結束。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\imm32.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\uxtheme.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\combase.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\msctf.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\WinSxS\amd64_microsoft.windows.common-controls_6595b64144ccf1df_6.0.26100.7019_none_3e06ffa0e335b8a8\comctl32.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\kernel.appcore.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\bcryptprimitives.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\oleaut32.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\TextInputFramework.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\CoreMessaging.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\CoreUIComponents.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\WinTypes.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\cryptbase.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\TextShaping.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\SHCore.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\mswsock.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\dnsapi.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\IPHLPAPI.DLL'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\nsi.dll'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\FWPUCLNT.DLL'。包含/排除設定已停用符號載入。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\rasadhlp.dll'。包含/排除設定已停用符號載入。
+26888 執行緒以返回碼 0 (0x0) 結束。
+18340 執行緒以返回碼 0 (0x0) 結束。
+final_project.exe' (Win32): 已載入 'C:\Windows\System32\ole32.dll'。包含/排除設定已停用符號載入。
+28204 執行緒以返回碼 0 (0x0) 結束。
+28028 執行緒以返回碼 0 (0x0) 結束。
+1432 執行緒以返回碼 0 (0x0) 結束。
+13040 執行緒以返回碼 0 (0x0) 結束。
+3908 執行緒以返回碼 0 (0x0) 結束。
+'[27200] final_project.exe' 程式以返回碼 0 (0x0) 結束。
